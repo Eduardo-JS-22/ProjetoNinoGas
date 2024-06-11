@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from functions.database_functions import *
 
 def add_bill(cliente_id, valor_total, data_venda, data_vencimento, data_fechamento, ativo):

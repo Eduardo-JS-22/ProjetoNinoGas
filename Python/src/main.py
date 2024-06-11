@@ -1,8 +1,9 @@
-from database.connection import *
-from functions.billing_functions import *
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from functions.client_functions import *
-from functions.database_functions import *
-from utils.date_utils import *
+from functions.billing_functions import *
 
 def main():
     print("Lista de Clientes: \n")
