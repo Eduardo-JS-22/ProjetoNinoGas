@@ -14,7 +14,8 @@ class BillingSystem:
         self.conn.commit()
 
     def add_bill(self, cliente_id, valor_total, data_venda):
-        data_vencimento = data_venda + timedelta(days=30)
+        #data_vencimento = data_venda + timedelta(days=30)
+        data_vencimento = "2024-05-24"
         self.cursor.execute('''
             INSERT INTO cobrancas (cliente_id, valor_total, data_venda, data_vencimento, data_fechamento, ativo)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -31,6 +32,7 @@ class BillingSystem:
             SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento, cobrancas.data_fechamento, cobrancas.ativo
             FROM cobrancas
             JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERe cobrancas.ativo = 1
         ''')
         for row in self.cursor.fetchall():
             print(row)
@@ -77,30 +79,30 @@ class BillingSystem:
         ''', (2, 125, "2024-02-15", "2024-03-16", None, True))
         self.conn.commit()
 
+    def filter_past_due_bills(self):
+        data_hoje = datetime.now().date()
+        data_hoje_str = data_hoje.isoformat()
+        print(f"Data atual (ISO): {data_hoje_str}")
+
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.data_vencimento < ? AND cobrancas.ativo = 1
+        ''', (data_hoje_str,))
+
+        for row in self.cursor.fetchall():
+            print(row)
+
     def close(self):
         self.conn.close()
 
-# Exemplo de uso
 billing_system = BillingSystem()
 
-# Adicionar clientes
-#billing_system.add_client("João Silva", 8, "Rua A, 123", "41987654321")
-#billing_system.add_client("Maria Oliveira", 9, "Rua B, 456", "41987654322")
-
-# Listar clientes
+#billing_system.add_client("Marcos Oliveira", "Rua C, 123", "47938136819")
 #billing_system.list_clients()
-
-# Adicionar cobranças
-#billing_system.add_bill(1, 100.0, "2023-06-30", "2023-07-30", None, True)
-#billing_system.add_bill(2, 150.0, "2023-06-29", "2023-07-29", None, True)
-
-billing_system.close_bill(8)
-
-# Listar cobranças com nomes de clientes
+#billing_system.add_bill(4, 105, "2024-04-24")
+#billing_system.filter_past_due_bills()
+billing_system.close_bill(16)
 #billing_system.list_bills()
-
-# Fechar a conexão
 billing_system.close()
-
-
-#Filtrar as cobranças que vencenram (data_fechamento maior que a data de hoje)
