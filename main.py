@@ -14,28 +14,52 @@ class BillingSystem:
         self.conn.commit()
 
     def add_bill(self, cliente_id, valor_total, data_venda):
-        #data_vencimento = data_venda + timedelta(days=30)
-        data_vencimento = "2024-05-24"
+        datetime_venda = datetime.strptime(data_venda, "%Y-%m-%d").date()
+        data_vencimento = datetime_venda + timedelta(days=30)
+        print(f"Data Venda: {datetime_venda}, Data Vencimento: {data_vencimento}.")
+        #data_vencimento = "2024-05-24"
         self.cursor.execute('''
             INSERT INTO cobrancas (cliente_id, valor_total, data_venda, data_vencimento, data_fechamento, ativo)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (cliente_id, valor_total, data_venda, data_vencimento, None, True))
+        ''', (cliente_id, valor_total, datetime_venda, data_vencimento, None, True))
         self.conn.commit()
 
     def list_clients(self):
-        self.cursor.execute('SELECT * FROM clientes')
+        clientes = []
+        self.cursor.execute('SELECT clientes.id, clientes.nome, clientes.endereco, clientes.telefone FROM clientes')
         for row in self.cursor.fetchall():
-            print(row)
+            #print(row)
+            clientes.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]}")
+        return clientes
+    
+    def return_client(self, cliente_id):
+        self.cursor.execute("""
+            SELECT clientes.nome, clientes.endereco, clientes.telefone
+            FROM clientes
+            WHERE id = ?
+        """, (cliente_id,))
+        row = self.cursor.fetchone()
+        return row
+    
+    def list_clients_names(self):
+        clientes = []
+        self.cursor.execute('SELECT clientes.id, nome FROM clientes')
+        for row in self.cursor.fetchall():
+            clientes.append(str(row[0]) + " - " + row[1])
+        return clientes
 
     def list_bills(self):
+        cobrancas = []
         self.cursor.execute('''
-            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento, cobrancas.data_fechamento, cobrancas.ativo
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
             FROM cobrancas
             JOIN clientes ON cobrancas.cliente_id = clientes.id
-            WHERe cobrancas.ativo = 1
+            WHERE cobrancas.ativo = 1
         ''')
         for row in self.cursor.fetchall():
-            print(row)
+            #print(row)
+            cobrancas.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]} - {row[4]}")
+        return cobrancas
 
     def close_bill(self, bill_id):
         self.cursor.execute('''
@@ -44,7 +68,7 @@ class BillingSystem:
             WHERE id = ?
         ''', (datetime.now().date(), False, bill_id))
         self.conn.commit()
-        self.number_close_days(bill_id)
+        #self.number_close_days(bill_id)
     
     def number_close_days(self, bill_id):
         self.cursor.execute('''
@@ -72,6 +96,14 @@ class BillingSystem:
         ''', (score, user_id))
         self.conn.commit()
     
+    def update_client(self, cliente_id, nome, endereco, telefone):
+        self.cursor.execute('''
+            UPDATE clientes
+            SET nome = ?, endereco = ?, telefone = ?
+            WHERE id = ?
+        ''', (nome, endereco, telefone, cliente_id))
+        self.conn.commit()
+    
     def add_custom_bill(self):
         self.cursor.execute('''
             INSERT INTO cobrancas (cliente_id, valor_total, data_venda, data_vencimento, data_fechamento, ativo)
@@ -80,9 +112,9 @@ class BillingSystem:
         self.conn.commit()
 
     def filter_past_due_bills(self):
+        cobrancas = []
         data_hoje = datetime.now().date()
         data_hoje_str = data_hoje.isoformat()
-        print(f"Data atual (ISO): {data_hoje_str}")
 
         self.cursor.execute('''
             SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
@@ -92,17 +124,54 @@ class BillingSystem:
         ''', (data_hoje_str,))
 
         for row in self.cursor.fetchall():
-            print(row)
+            cobrancas.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]} - {row[4]}")
+        return cobrancas
+    
+    def menu(self):
+        quantidade_cobrancas_ativas = self.filtrar_quantidade_cobrancas_ativas()
+        quantidade_cobrancas_vencidas = self.filtrar_quantidade_cobrancas_vencidas()
+        quantidade_clientes_ativos = self.filtrar_quantidade_clientes_ativos()
+        return("Total Clientes: "+str(quantidade_clientes_ativos)+"\nCobranças Ativas: "+str(quantidade_cobrancas_ativas)+"\nCobranças Vencidas: "+str(quantidade_cobrancas_vencidas))
+    
+    def filtrar_quantidade_cobrancas_ativas(self):
+        self.cursor.execute('''
+            SELECT cobrancas.id
+            FROM cobrancas
+            WHERE cobrancas.ativo = 1
+        ''')
+        rows = self.cursor.fetchall()
+        return len(rows)
+    
+    def filtrar_quantidade_cobrancas_vencidas(self):
+        data_hoje = datetime.now().date()
+        data_hoje_str = data_hoje.isoformat()
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.data_vencimento < ? AND cobrancas.ativo = 1
+        ''', (data_hoje_str,))
+        rows = self.cursor.fetchall()
+        return len(rows)
+    
+    def filtrar_quantidade_clientes_ativos(self):
+        self.cursor.execute('''
+            SELECT clientes.id
+            FROM clientes
+        ''')
+        rows = self.cursor.fetchall()
+        return len(rows)
 
     def close(self):
         self.conn.close()
 
 billing_system = BillingSystem()
-
 #billing_system.add_client("Marcos Oliveira", "Rua C, 123", "47938136819")
 #billing_system.list_clients()
 #billing_system.add_bill(4, 105, "2024-04-24")
 #billing_system.filter_past_due_bills()
-billing_system.close_bill(16)
-#billing_system.list_bills()
+#billing_system.close_bill(16)
+#print(billing_system.list_bills())
+#billing_system.list_clients_names()
+#billing_system.update_client(7, "Alberto da Nóbrega", "Rua Alfredo Spindler, 156, Cruzeiro", "47995128436")
 billing_system.close()
