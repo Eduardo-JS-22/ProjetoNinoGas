@@ -16,8 +16,6 @@ class BillingSystem:
     def add_bill(self, cliente_id, valor_total, data_venda):
         datetime_venda = datetime.strptime(data_venda, "%Y-%m-%d").date()
         data_vencimento = datetime_venda + timedelta(days=30)
-        print(f"Data Venda: {datetime_venda}, Data Vencimento: {data_vencimento}.")
-        #data_vencimento = "2024-05-24"
         self.cursor.execute('''
             INSERT INTO cobrancas (cliente_id, valor_total, data_venda, data_vencimento, data_fechamento, ativo)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -28,8 +26,7 @@ class BillingSystem:
         clientes = []
         self.cursor.execute('SELECT clientes.id, clientes.nome, clientes.endereco, clientes.telefone FROM clientes')
         for row in self.cursor.fetchall():
-            #print(row)
-            clientes.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]}")
+            clientes.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]}")
         return clientes
     
     def return_client(self, cliente_id):
@@ -57,8 +54,7 @@ class BillingSystem:
             WHERE cobrancas.ativo = 1
         ''')
         for row in self.cursor.fetchall():
-            #print(row)
-            cobrancas.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]} - {row[4]}")
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
         return cobrancas
 
     def close_bill(self, bill_id):
@@ -122,9 +118,9 @@ class BillingSystem:
             JOIN clientes ON cobrancas.cliente_id = clientes.id
             WHERE cobrancas.data_vencimento < ? AND cobrancas.ativo = 1
         ''', (data_hoje_str,))
-
+        cobrancas.append(f"VENDA | CLIENTE | VALOR TOTAL | DATA DE VENDA | DATA DE VENCIMENTO")
         for row in self.cursor.fetchall():
-            cobrancas.append(f"{row[0]} - {row[1]} - {row[2]} - {row[3]} - {row[4]}")
+            cobrancas.append(f"{row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]}")
         return cobrancas
     
     def menu(self):
@@ -161,6 +157,19 @@ class BillingSystem:
         ''')
         rows = self.cursor.fetchall()
         return len(rows)
+    
+    def buscar_cobrancas(self):
+        cobrancas = []
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.ativo = 1
+        ''')
+        cobrancas.append(f"VENDA | CLIENTE | VALOR TOTAL | DATA DE VENDA | DATA DE VENCIMENTO")
+        for row in self.cursor.fetchall():
+            cobrancas.append(f"{row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]}")
+        return cobrancas
 
     def close(self):
         self.conn.close()

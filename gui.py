@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QAbstractItemView, QHBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import Qt
 from main import BillingSystem
 from datetime import datetime
@@ -74,6 +74,12 @@ class MainWindow(QMainWindow):
             QListView::item:selected {
                 background: lightgray;
             }
+            QTableWidget {
+                font-size: 16px;
+            }
+            QHeaderView {
+                font-size: 16px;
+            }
         """)
 
         # Criando a barra de ferramentas
@@ -125,14 +131,17 @@ class MainWindow(QMainWindow):
                 self.list_widget.setAlignment(Qt.AlignCenter)
                 self.page_layout.addWidget(self.list_widget)
             elif page_name == "Clientes":
-                self.list_widget_client = QListWidget(self)
-                self.list_widget_client.setSelectionMode(
-                    QAbstractItemView.ExtendedSelection
-                )
-                clientes = self.billing_system.list_clients()
-                self.list_widget_client.itemClicked.connect(self.print_itens_client)
-                self.list_widget_client.addItems(clientes)
-                self.page_layout.addWidget(self.list_widget_client)
+                client_container_widget = QWidget()
+                client_layout = QHBoxLayout(client_container_widget)
+                client_layout.setContentsMargins(0, 0, 0, 0)
+
+                self.table_clients = QTableWidget()
+                self.page_layout.addWidget(self.table_clients)
+                self.load_data_clients()
+                self.table_clients.cellClicked.connect(self.client_cell_was_clicked)
+
+                header = self.table_clients.horizontalHeader()
+                header.setSectionResizeMode(QHeaderView.Stretch)
 
                 new_client_button = QPushButton("Adicionar Novo Cliente", self)
                 new_client_button.clicked.connect(self.dock_new_client)
@@ -142,15 +151,13 @@ class MainWindow(QMainWindow):
                 self.button_layout.addWidget(edit_client_button)
                 self.page_layout.addLayout(self.button_layout)
             elif page_name == "Cobranças":
-                # Adiciona a lista de cobranças
-                self.list_widget_bill = QListWidget(self)
-                self.list_widget_bill.setSelectionMode(
-                    QAbstractItemView.ExtendedSelection
-                )
-                cobrancas = self.billing_system.list_bills()
-                self.list_widget_bill.itemClicked.connect(self.print_itens_bill)
-                self.list_widget_bill.addItems(cobrancas)
-                self.page_layout.addWidget(self.list_widget_bill)
+                self.table_bills = QTableWidget()
+                self.page_layout.addWidget(self.table_bills)
+                self.load_data_bills()
+                self.table_bills.cellClicked.connect(self.bill_cell_was_clicked)
+
+                header = self.table_bills.horizontalHeader()
+                header.setSectionResizeMode(QHeaderView.Stretch)
 
                 copy_bills = QPushButton("Copiar Cobranças", self)
                 copy_bills.clicked.connect(self.copy_cobrancas)
@@ -181,18 +188,44 @@ class MainWindow(QMainWindow):
         menu = self.billing_system.menu()
         self.list_widget.clear()
         self.list_widget.setText(menu)
-        clientes = self.billing_system.list_clients()
-        self.list_widget_client.clear()
-        self.list_widget_client.addItems(clientes)
-        cobrancas = self.billing_system.list_bills()
-        self.list_widget_bill.clear()
-        self.list_widget_bill.addItems(cobrancas)
+        self.table_clients.clear()
+        self.load_data_clients()
+        self.table_bills.clear()
+        self.load_data_bills()
         self.nome_input.clear()
         self.endereco_input.clear()
         self.telefone_input.clear()
         self.cliente_id_input.clear()
         self.valor_input.clear()
         self.data_venda_input.clear()
+        data_hoje = datetime.now().date()
+        data_hoje_str = data_hoje.isoformat()
+        self.data_venda_input.setText(data_hoje_str)
+
+    def load_data_clients(self):
+        self.table_clients.setColumnCount(4)
+        self.table_clients.setRowCount(30 if self.billing_system.filtrar_quantidade_clientes_ativos() < 30 else self.billing_system.filtrar_quantidade_clientes_ativos())
+        self.table_clients.setHorizontalHeaderLabels(["Cliente", "Nome", "Endereço", "Telefone"])
+
+        clientes = self.billing_system.list_clients()
+        for i in range(len(clientes)):
+            self.table_clients.setItem(i, 0, QTableWidgetItem(str(clientes[i].split('£')[0].strip())))
+            self.table_clients.setItem(i, 1, QTableWidgetItem(str(clientes[i].split('£')[1].strip())))
+            self.table_clients.setItem(i, 2, QTableWidgetItem(str(clientes[i].split('£')[2].strip())))
+            self.table_clients.setItem(i, 3, QTableWidgetItem(str(clientes[i].split('£')[3].strip())))
+
+    def load_data_bills(self):
+        self.table_bills.setColumnCount(5)
+        self.table_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_ativas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_ativas())
+        self.table_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Vencimento"])
+
+        cobrancas = self.billing_system.list_bills()
+        for i in range(len(cobrancas)):
+            self.table_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+            self.table_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+            self.table_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+            self.table_bills.setItem(i, 3, QTableWidgetItem(str(cobrancas[i].split('£')[3].strip())))
+            self.table_bills.setItem(i, 4, QTableWidgetItem(str(cobrancas[i].split('£')[4].strip())))
 
     def copy_cobrancas_vencidas(self):
         cobrancas_vencidas = self.billing_system.filter_past_due_bills()
@@ -200,28 +233,25 @@ class MainWindow(QMainWindow):
         clipboard.setText("\n".join(cobrancas_vencidas))
 
     def copy_cobrancas(self):
-        cobrancas = self.billing_system.list_bills()
+        cobrancas = self.billing_system.buscar_cobrancas()
         clipboard = QApplication.clipboard()
         clipboard.setText("\n".join(cobrancas))
     
-    def print_itens_client(self):
-        self.clients = str(self.list_widget_client.selectedItems()[0].text())
-        print (self.clients)
+    def client_cell_was_clicked(self, row):
+        self.clients = self.table_clients.item(row, 0).text()
     
     def copy_clientes_selecionadas(self):
         if (self.clients != None):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.clients)
             self.clients = None
-            print(self.clients)
         else:
             QMessageBox.warning(self, "Erro", "Nenhum cliente selecionado para edição.")
     
-    def print_itens_bill(self):
-        items = self.list_widget_bill.selectedItems()
+    def bill_cell_was_clicked(self, row):
+        items = self.table_bills.selectedItems()
         for i in range(len(items)):
-            self.bills.append(str(self.list_widget_bill.selectedItems()[i].text()))
-        print (list(set(self.bills)))
+            self.bills.append(str(self.table_bills.item(row, 0).text()))
     
     def close_cobrancas_selecionadas(self):
         if (len(self.bills) > 0):
@@ -332,8 +362,6 @@ class MainWindow(QMainWindow):
             filtered_data = [item for item in self.data if text.lower() in item.lower()]
             self.suggestions_list.addItems(filtered_data)
             self.suggestions_list.show()
-            if (len(filtered_data) == 1):
-                print(int(filtered_data[0].split('-')[0].strip()))
         else:
             self.suggestions_list.hide()
     
@@ -349,7 +377,6 @@ class MainWindow(QMainWindow):
         if (nome != None and endereco != None and telefone != None):
             self.billing_system.add_client(nome, endereco, telefone)
             self.update_data()
-            print(self.billing_system.list_clients())
         else:
             QMessageBox.information(self, "Dados incompletos para cadastrar novo cliente.")
     
@@ -362,7 +389,6 @@ class MainWindow(QMainWindow):
         if (nome != None and endereco != None and telefone != None):
             self.billing_system.update_client(cliente_id, nome, endereco, telefone)
             self.update_data()
-            print(self.billing_system.list_clients())
             self.clients = None
             self.dock.close()
         else:
@@ -376,7 +402,6 @@ class MainWindow(QMainWindow):
         if (cliente_id != None and valor_total != None and data_venda != None):
             self.billing_system.add_bill(int(cliente_id.split('-')[0].strip()), float(valor_total), data_venda)
             self.update_data()
-            print (self.billing_system.list_bills())
         else:
             QMessageBox.warning(self, "Erro", "Erro ao cadastrar cobrança.")
 
