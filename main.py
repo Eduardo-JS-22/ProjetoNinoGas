@@ -56,6 +56,18 @@ class BillingSystem:
         for row in self.cursor.fetchall():
             cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
         return cobrancas
+    
+    def list_closed_bills(self):
+        cobrancas = []
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_fechamento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.ativo = 0
+        ''')
+        for row in self.cursor.fetchall():
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
+        return cobrancas
 
     def close_bill(self, bill_id):
         self.cursor.execute('''
@@ -118,9 +130,8 @@ class BillingSystem:
             JOIN clientes ON cobrancas.cliente_id = clientes.id
             WHERE cobrancas.data_vencimento < ? AND cobrancas.ativo = 1
         ''', (data_hoje_str,))
-        cobrancas.append(f"VENDA | CLIENTE | VALOR TOTAL | DATA DE VENDA | DATA DE VENCIMENTO")
         for row in self.cursor.fetchall():
-            cobrancas.append(f"{row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]}")
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
         return cobrancas
     
     def menu(self):
@@ -158,6 +169,16 @@ class BillingSystem:
         rows = self.cursor.fetchall()
         return len(rows)
     
+    def filtrar_quantidade_cobrancas_fechadas(self):
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_vencimento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.ativo = 0
+        ''')
+        rows = self.cursor.fetchall()
+        return len(rows)
+    
     def buscar_cobrancas(self):
         cobrancas = []
         self.cursor.execute('''
@@ -166,10 +187,53 @@ class BillingSystem:
             JOIN clientes ON cobrancas.cliente_id = clientes.id
             WHERE cobrancas.ativo = 1
         ''')
-        cobrancas.append(f"VENDA | CLIENTE | VALOR TOTAL | DATA DE VENDA | DATA DE VENCIMENTO")
         for row in self.cursor.fetchall():
-            cobrancas.append(f"{row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]}")
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
         return cobrancas
+    
+    def filtrar_cobrancas_por_cliente(self, cliente_id):
+        cobrancas = []
+        self.cursor.execute('''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_fechamento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.ativo = 0 AND clientes.id = ?
+        ''', (cliente_id,))
+        for row in self.cursor.fetchall():
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
+        return cobrancas
+    
+    def get_cobrancas_by_date(self, month=None, day=None):
+        query = '''
+            SELECT cobrancas.id, clientes.nome, cobrancas.valor_total, cobrancas.data_venda, cobrancas.data_fechamento
+            FROM cobrancas
+            JOIN clientes ON cobrancas.cliente_id = clientes.id
+            WHERE cobrancas.ativo = 0
+        '''
+        params = []
+
+        if month and day:
+            query += ' AND strftime("%m", cobrancas.data_fechamento) = ? AND strftime("%d", cobrancas.data_fechamento) = ?'
+            params.extend([f'{month:02}', f'{day:02}'])
+        elif month:
+            query += ' AND strftime("%m", cobrancas.data_fechamento) = ?'
+            params.append(f'{month:02}')
+        elif day:
+            query += ' AND strftime("%d", cobrancas.data_fechamento) = ?'
+            params.append(f'{day:02}')
+        
+        self.cursor.execute(query, params)
+        cobrancas = []
+
+        for row in self.cursor.fetchall():
+            cobrancas.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]}")
+        
+        return cobrancas
+    
+    def delete_cobrancas(self):
+        self.cursor.execute('''
+            DELETE FROM cobrancas WHERE id = 23
+        ''')
 
     def close(self):
         self.conn.close()
@@ -183,4 +247,10 @@ billing_system = BillingSystem()
 #print(billing_system.list_bills())
 #billing_system.list_clients_names()
 #billing_system.update_client(7, "Alberto da Nóbrega", "Rua Alfredo Spindler, 156, Cruzeiro", "47995128436")
+#print(billing_system.list_closed_bills())
+#print(billing_system.filtrar_quantidade_cobrancas_fechadas())
+#billing_system.delete_cobrancas()
+#print(billing_system.filtrar_cobrancas_por_cliente(2))
+#print(billing_system.get_cobrancas_by_date("", 3))
+#print(len(billing_system.filter_past_due_bills()))
 billing_system.close()

@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QHBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import Qt
 from main import BillingSystem
 from datetime import datetime
@@ -20,6 +20,20 @@ class MainWindow(QMainWindow):
         self.cliente_id_input = QLineEdit()
         self.valor_input = QLineEdit()
         self.data_venda_input = QLineEdit()
+        self.month_date = QComboBox()
+        self.day_date = QComboBox()
+        self.day_date.addItem("")
+        self.month_date.addItem("")
+
+        days = list(range(1, 32))
+        months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        self.month_to_number = {month: index + 1 for index, month in enumerate(months)}
+
+        for day in days:
+            self.day_date.addItem(str(day))
+        
+        for month in months:
+            self.month_date.addItem(month)
 
         # Configurações da janela principal
         self.setWindowTitle("Nino Gás")
@@ -50,7 +64,7 @@ class MainWindow(QMainWindow):
                 background-color: lightgray;
             }
             QLabel {
-                font-size: 24px;
+                font-size: 48px;
                 color: black;
             }
             QPushButton {
@@ -75,10 +89,10 @@ class MainWindow(QMainWindow):
                 background: lightgray;
             }
             QTableWidget {
-                font-size: 16px;
+                font-size: 24px;
             }
-            QHeaderView {
-                font-size: 16px;
+            QLineEdit {
+                font-size: 24px;
             }
         """)
 
@@ -106,8 +120,12 @@ class MainWindow(QMainWindow):
         btn_cobrancas.clicked.connect(lambda: self.show_page("Cobranças"))
         layout.addWidget(btn_cobrancas)
 
+        btn_relatorios = QPushButton("Histórico", self)
+        btn_relatorios.clicked.connect(lambda: self.show_page("Histórico"))
+        layout.addWidget(btn_relatorios)
+
         # Define uma política de tamanho para que os botões preencham a largura disponível
-        for btn in [btn_inicial, btn_clientes, btn_cobrancas]:
+        for btn in [btn_inicial, btn_clientes, btn_cobrancas, btn_relatorios]:
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         # Adiciona o widget contêiner à barra de ferramentas
@@ -119,18 +137,43 @@ class MainWindow(QMainWindow):
 
         # Páginas
         self.pages = {}
-        for page_name in ["Página Inicial", "Clientes", "Cobranças", "Relatórios"]:
+        for page_name in ["Página Inicial", "Clientes", "Cobranças", "Histórico"]:
             page = QWidget()
             self.page_layout = QVBoxLayout(page)
             self.button_layout = QHBoxLayout()
 
             if page_name == "Página Inicial":
-                # Adiciona o menu
-                menu = self.billing_system.menu()
-                self.list_widget = QLabel(menu, self)
-                self.list_widget.setAlignment(Qt.AlignCenter)
-                self.page_layout.addWidget(self.list_widget)
+                self.table_past_bills = QTableWidget()
+                self.list_widget = QLabel()
+                if (len(self.billing_system.filter_past_due_bills()) > 0):
+                    titulo = QLabel("Cobranças Vencidas", self)
+                    titulo.setAlignment(Qt.AlignCenter)
+                    self.page_layout.addWidget(titulo)
+                    self.page_layout.addWidget(self.table_past_bills)
+                    self.load_data_past_bills()
+                    
+                    header = self.table_past_bills.horizontalHeader()
+                    header.setSectionResizeMode(QHeaderView.Stretch)
+
+                    copy_bills = QPushButton("Copiar Todas as Cobranças", self)
+                    copy_bills.clicked.connect(self.copy_cobrancas)
+                    self.button_layout.addWidget(copy_bills)
+                    copy_won_bills = QPushButton("Copiar Cobranças Vencidas", self)
+                    copy_won_bills.clicked.connect(self.copy_cobrancas_vencidas)
+                    self.button_layout.addWidget(copy_won_bills)
+
+                    self.page_layout.addLayout(self.button_layout)
+                else:
+                    menu = self.billing_system.menu()
+                    self.list_widget.setText(menu)
+                    self.list_widget.setAlignment(Qt.AlignCenter)
+                    self.page_layout.addWidget(self.list_widget)
+
+
             elif page_name == "Clientes":
+                titulo = QLabel("Clientes", self)
+                titulo.setAlignment(Qt.AlignCenter)
+                self.page_layout.addWidget(titulo)
                 client_container_widget = QWidget()
                 client_layout = QHBoxLayout(client_container_widget)
                 client_layout.setContentsMargins(0, 0, 0, 0)
@@ -151,6 +194,9 @@ class MainWindow(QMainWindow):
                 self.button_layout.addWidget(edit_client_button)
                 self.page_layout.addLayout(self.button_layout)
             elif page_name == "Cobranças":
+                titulo = QLabel("Cobranças", self)
+                titulo.setAlignment(Qt.AlignCenter)
+                self.page_layout.addWidget(titulo)
                 self.table_bills = QTableWidget()
                 self.page_layout.addWidget(self.table_bills)
                 self.load_data_bills()
@@ -174,9 +220,24 @@ class MainWindow(QMainWindow):
 
                 self.page_layout.addLayout(self.button_layout)
             else:
-                label = QLabel(page_name, self)
-                label.setAlignment(Qt.AlignCenter)
-                self.page_layout.addWidget(label)
+                titulo = QLabel("Histórico", self)
+                titulo.setAlignment(Qt.AlignCenter)
+                self.page_layout.addWidget(titulo)
+                self.table_closed_bills = QTableWidget()
+                self.page_layout.addWidget(self.table_closed_bills)
+                self.load_data_closed_bills()
+
+                header = self.table_closed_bills.horizontalHeader()
+                header.setSectionResizeMode(QHeaderView.Stretch)
+
+                filter_closed_bill_name = QPushButton("Filtrar Por Cliente", self)
+                filter_closed_bill_name.clicked.connect(self.dock_filter_closed_bill_name)
+                self.button_layout.addWidget(filter_closed_bill_name)
+                filter_closed_bill_date = QPushButton("Filtrar Por Data", self)
+                filter_closed_bill_date.clicked.connect(self.dock_filter_closed_bill_date)
+                self.button_layout.addWidget(filter_closed_bill_date)
+
+                self.page_layout.addLayout(self.button_layout)
 
             self.stack.addWidget(page)
             self.pages[page_name] = page
@@ -192,6 +253,10 @@ class MainWindow(QMainWindow):
         self.load_data_clients()
         self.table_bills.clear()
         self.load_data_bills()
+        self.table_closed_bills.clear()
+        self.load_data_closed_bills()
+        self.table_past_bills.clear()
+        self.load_data_past_bills()
         self.nome_input.clear()
         self.endereco_input.clear()
         self.telefone_input.clear()
@@ -200,7 +265,8 @@ class MainWindow(QMainWindow):
         self.data_venda_input.clear()
         data_hoje = datetime.now().date()
         data_hoje_str = data_hoje.isoformat()
-        self.data_venda_input.setText(data_hoje_str)
+        data_atual = datetime.strptime(data_hoje_str, "%Y-%m-%d")
+        self.data_venda_input.setText(data_atual.strftime("%d/%m/%Y"))
 
     def load_data_clients(self):
         self.table_clients.setColumnCount(4)
@@ -221,21 +287,111 @@ class MainWindow(QMainWindow):
 
         cobrancas = self.billing_system.list_bills()
         for i in range(len(cobrancas)):
+            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+            data_vencimento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
             self.table_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
             self.table_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
             self.table_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
-            self.table_bills.setItem(i, 3, QTableWidgetItem(str(cobrancas[i].split('£')[3].strip())))
-            self.table_bills.setItem(i, 4, QTableWidgetItem(str(cobrancas[i].split('£')[4].strip())))
+            self.table_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+            self.table_bills.setItem(i, 4, QTableWidgetItem(data_vencimento.strftime("%d/%m/%Y")))
+    
+    def load_data_closed_bills(self):
+        self.table_closed_bills.setColumnCount(5)
+        self.table_closed_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_fechadas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_fechadas())
+        self.table_closed_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Pagamento"])
+
+        cobrancas = self.billing_system.list_closed_bills()
+        for i in range(len(cobrancas)):
+            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+            data_pagamento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
+            self.table_closed_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+            self.table_closed_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+            self.table_closed_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+            self.table_closed_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+            self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
+        
+    def load_data_past_bills(self):
+        self.table_past_bills.setColumnCount(5)
+        self.table_past_bills.setRowCount(len(self.billing_system.filter_past_due_bills()) if len(self.billing_system.filter_past_due_bills()) > 30 else 30)
+        self.table_past_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Vencimento"])
+
+        cobrancas = self.billing_system.filter_past_due_bills()
+        for i in range(len(cobrancas)):
+            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+            data_vencimento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
+            self.table_past_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+            self.table_past_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+            self.table_past_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+            self.table_past_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+            self.table_past_bills.setItem(i, 4, QTableWidgetItem(data_vencimento.strftime("%d/%m/%Y")))
+
+    def load_data_closed_bills_filter_name(self, cliente_id):
+        self.table_closed_bills.setColumnCount(5)
+        self.table_closed_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_fechadas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_fechadas())
+        self.table_closed_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Pagamento"])
+
+        cobrancas = self.billing_system.filtrar_cobrancas_por_cliente(cliente_id)
+        for i in range(len(cobrancas)):
+            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+            data_pagamento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
+            self.table_closed_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+            self.table_closed_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+            self.table_closed_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+            self.table_closed_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+            self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
+    
+    def load_data_closed_bills_filter_date(self, dia, mes):
+        self.table_closed_bills.setColumnCount(5)
+        self.table_closed_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_fechadas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_fechadas())
+        self.table_closed_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Pagamento"])
+
+        cobrancas = self.billing_system.get_cobrancas_by_date(self.month_to_number.get(mes) if mes != "" else "", int(dia) if dia != "" else "")
+        for i in range(len(cobrancas)):
+            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+            data_pagamento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
+            self.table_closed_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+            self.table_closed_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+            self.table_closed_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+            self.table_closed_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+            self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
 
     def copy_cobrancas_vencidas(self):
         cobrancas_vencidas = self.billing_system.filter_past_due_bills()
+        list_cobrancas = []
+
+        comprimento = 0
+
+        for item in cobrancas_vencidas:
+            cobranca = item.split('£')
+            if (comprimento < len(cobranca[1])):
+                comprimento = len(cobranca[1])
+        
+        for item in cobrancas_vencidas:
+            cobranca = item.split('£')
+            data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
+            list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+
         clipboard = QApplication.clipboard()
-        clipboard.setText("\n".join(cobrancas_vencidas))
+        clipboard.setText("\n".join(list_cobrancas))
 
     def copy_cobrancas(self):
         cobrancas = self.billing_system.buscar_cobrancas()
+        list_cobrancas = []
+
+        comprimento = 0
+
+        for item in cobrancas:
+            cobranca = item.split('£')
+            if (comprimento < len(cobranca[1])):
+                comprimento = len(cobranca[1])
+        
+        for item in cobrancas:
+            cobranca = item.split('£')
+            data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
+            list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+
         clipboard = QApplication.clipboard()
-        clipboard.setText("\n".join(cobrancas))
+        clipboard.setText("\n".join(list_cobrancas))
     
     def client_cell_was_clicked(self, row):
         self.clients = self.table_clients.item(row, 0).text()
@@ -345,7 +501,8 @@ class MainWindow(QMainWindow):
 
         data_hoje = datetime.now().date()
         data_hoje_str = data_hoje.isoformat()
-        self.data_venda_input.setText(data_hoje_str)
+        data_atual = datetime.strptime(data_hoje_str, "%Y-%m-%d")
+        self.data_venda_input.setText(data_atual.strftime("%d/%m/%Y"))
 
         dock_widget.setLayout(dock_layout)
         dock.setWidget(dock_widget)
@@ -355,6 +512,64 @@ class MainWindow(QMainWindow):
 
         # Conectar o botão "Salvar" à função save_data
         salvar_button.clicked.connect(self.add_bill)
+
+    def dock_filter_closed_bill_name(self):
+        dock = QDockWidget("Filtrar Por Nome", self)
+        dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+
+        dock_widget = QWidget()
+        dock_layout = QFormLayout()
+        self.cliente_id_input.textChanged.connect(self.on_text_changed)
+        filtrar_button = QPushButton("Filtrar Cobranças")
+        copiar_button = QPushButton("Copiar Cobranças")
+
+        dock_layout.addRow("Cliente", self.cliente_id_input)
+        dock_layout.addRow(filtrar_button)
+        dock_layout.addRow(copiar_button)
+
+        self.suggestions_list = QListWidget(self)
+        self.suggestions_list.itemClicked.connect(self.on_item_clicked)
+        dock_layout.addWidget(self.suggestions_list)
+        self.suggestions_list.hide()
+        self.data = self.billing_system.list_clients_names()
+
+        dock_widget.setLayout(dock_layout)
+        dock.setWidget(dock_widget)
+
+        dock.visibilityChanged.connect(self.on_dock_visibility_changed)
+
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+
+        filtrar_button.clicked.connect(self.filter_closed_bill_name)
+        copiar_button.clicked.connect(self.copy_bill_filter_name)
+
+    def dock_filter_closed_bill_date(self):
+        dock = QDockWidget("Filtrar Por Nome", self)
+        dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+
+        dock_widget = QWidget()
+        dock_layout = QFormLayout()
+        filtrar_button = QPushButton("Filtrar Cobranças")
+        copiar_button = QPushButton("Copiar Cobranças")
+
+        dock_layout.addRow("Dia", self.day_date)
+        dock_layout.addRow("Mês", self.month_date)
+        dock_layout.addRow(filtrar_button)
+        dock_layout.addRow(copiar_button)
+
+        dock_widget.setLayout(dock_layout)
+        dock.setWidget(dock_widget)
+
+        dock.visibilityChanged.connect(self.on_dock_visibility_changed)
+
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+
+        filtrar_button.clicked.connect(self.filter_closed_bill_date)
+        copiar_button.clicked.connect(self.copy_bill_filter_date)
+    
+    def on_dock_visibility_changed(self, visible):
+        if not visible:
+            self.update_data()
     
     def on_text_changed(self, text):
         if text:
@@ -400,10 +615,77 @@ class MainWindow(QMainWindow):
         data_venda = self.data_venda_input.text()
 
         if (cliente_id != None and valor_total != None and data_venda != None):
-            self.billing_system.add_bill(int(cliente_id.split('-')[0].strip()), float(valor_total), data_venda)
+            data_venda_converted = datetime.strptime(data_venda.strip(), "%d/%m/%Y").strftime("%Y-%m-%d")
+            self.billing_system.add_bill(int(cliente_id.split('-')[0].strip()), float(valor_total), data_venda_converted)
             self.update_data()
         else:
             QMessageBox.warning(self, "Erro", "Erro ao cadastrar cobrança.")
+    
+    def filter_closed_bill_name(self):
+        cliente_id = self.cliente_id_input.text()
+
+        if (cliente_id != None):
+            self.table_closed_bills.clear()
+            self.load_data_closed_bills_filter_name(int(cliente_id.split('-')[0].strip()))
+        else:
+            QMessageBox.warning(self, "Erro", "Erro ao filtrar cobrança por cliente.")
+    
+    def copy_bill_filter_name(self):
+        cliente_id = self.cliente_id_input.text()
+
+        if (cliente_id != None):
+            cobrancas = self.billing_system.filtrar_cobrancas_por_cliente(int(cliente_id.split('-')[0].strip()))
+            list_cobrancas = []
+
+            comprimento = 0
+
+            for item in cobrancas:
+                cobranca = item.split('£')
+                if (comprimento < len(cobranca[1])):
+                    comprimento = len(cobranca[1])
+            
+            for item in cobrancas:
+                cobranca = item.split('£')
+                data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
+                list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+            clipboard = QApplication.clipboard()
+            clipboard.setText("\n".join(list_cobrancas))
+        else:
+            QMessageBox.warning(self, "Erro", "Erro ao copiar cobrança por cliente.")
+
+    def filter_closed_bill_date(self):
+        mes = self.month_date.currentText()
+        dia = self.day_date.currentText()
+
+        if (mes != "" or dia != ""):
+            self.table_closed_bills.clear()
+            self.load_data_closed_bills_filter_date(dia, mes)
+        else:
+            QMessageBox.warning(self, "Erro", "Selecione um dia e/ou um mês para filtrar as cobranças.")
+    
+    def copy_bill_filter_date(self):
+        mes = self.month_date.currentText()
+        dia = self.day_date.currentText()
+
+        if (mes != "" or dia != ""):
+            cobrancas = self.billing_system.get_cobrancas_by_date(self.month_to_number.get(mes) if mes != "" else "", int(dia) if dia != "" else "")
+            list_cobrancas = []
+
+            comprimento = 0
+
+            for item in cobrancas:
+                cobranca = item.split('£')
+                if (comprimento < len(cobranca[1])):
+                    comprimento = len(cobranca[1])
+            
+            for item in cobrancas:
+                cobranca = item.split('£')
+                data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
+                list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+            clipboard = QApplication.clipboard()
+            clipboard.setText("\n".join(list_cobrancas))
+        else:
+            QMessageBox.warning(self, "Erro", "Selecione um dia e/ou um mês para filtrar as cobranças.")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
