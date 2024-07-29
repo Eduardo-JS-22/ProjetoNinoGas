@@ -1,6 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QIcon
 from main import BillingSystem
 from datetime import datetime
 
@@ -15,13 +16,21 @@ class MainWindow(QMainWindow):
         self.bills = []
         self.clients = None
         self.nome_input = QLineEdit()
+        self.nome_input.setStyleSheet('font-size: 20px')
         self.endereco_input = QLineEdit()
+        self.endereco_input.setStyleSheet('font-size: 20px')
         self.telefone_input = QLineEdit()
+        self.telefone_input.setStyleSheet('font-size: 20px')
         self.cliente_id_input = QLineEdit()
+        self.cliente_id_input.setStyleSheet('font-size: 20px')
         self.valor_input = QLineEdit()
+        self.valor_input.setStyleSheet('font-size: 20px')
         self.data_venda_input = QLineEdit()
+        self.data_venda_input.setStyleSheet('font-size: 20px')
         self.month_date = QComboBox()
+        self.month_date.setStyleSheet('font-size: 20px')
         self.day_date = QComboBox()
+        self.day_date.setStyleSheet('font-size: 20px')
         self.day_date.addItem("")
         self.month_date.addItem("")
 
@@ -37,6 +46,7 @@ class MainWindow(QMainWindow):
 
         # Configurações da janela principal
         self.setWindowTitle("Nino Gás")
+        self.setWindowIcon(QIcon('logo.png'))
         self.setGeometry(100, 100, 1280, 720)
 
         # Paleta de cores para o menu superior
@@ -91,9 +101,6 @@ class MainWindow(QMainWindow):
             QTableWidget {
                 font-size: 24px;
             }
-            QLineEdit {
-                font-size: 24px;
-            }
         """)
 
         # Criando a barra de ferramentas
@@ -144,6 +151,7 @@ class MainWindow(QMainWindow):
 
             if page_name == "Página Inicial":
                 self.table_past_bills = QTableWidget()
+                self.table_past_bills.setFont(QFont("Arial", 12))
                 self.list_widget = QLabel()
                 if (len(self.billing_system.filter_past_due_bills()) > 0):
                     titulo = QLabel("Cobranças Vencidas", self)
@@ -164,7 +172,9 @@ class MainWindow(QMainWindow):
 
                     self.page_layout.addLayout(self.button_layout)
                 else:
-                    menu = self.billing_system.menu()
+                    menu_data = self.billing_system.menu()
+                    menu = QLabel(menu_data)
+                    menu.setStyleSheet('font-size: 32px')
                     self.list_widget.setText(menu)
                     self.list_widget.setAlignment(Qt.AlignCenter)
                     self.page_layout.addWidget(self.list_widget)
@@ -179,6 +189,7 @@ class MainWindow(QMainWindow):
                 client_layout.setContentsMargins(0, 0, 0, 0)
 
                 self.table_clients = QTableWidget()
+                self.table_clients.setFont(QFont("Arial", 12))
                 self.page_layout.addWidget(self.table_clients)
                 self.load_data_clients()
                 self.table_clients.cellClicked.connect(self.client_cell_was_clicked)
@@ -198,6 +209,7 @@ class MainWindow(QMainWindow):
                 titulo.setAlignment(Qt.AlignCenter)
                 self.page_layout.addWidget(titulo)
                 self.table_bills = QTableWidget()
+                self.table_bills.setFont(QFont("Arial", 12))
                 self.page_layout.addWidget(self.table_bills)
                 self.load_data_bills()
                 self.table_bills.cellClicked.connect(self.bill_cell_was_clicked)
@@ -224,6 +236,7 @@ class MainWindow(QMainWindow):
                 titulo.setAlignment(Qt.AlignCenter)
                 self.page_layout.addWidget(titulo)
                 self.table_closed_bills = QTableWidget()
+                self.table_closed_bills.setFont(QFont("Arial", 12))
                 self.page_layout.addWidget(self.table_closed_bills)
                 self.load_data_closed_bills()
 
@@ -358,6 +371,7 @@ class MainWindow(QMainWindow):
     def copy_cobrancas_vencidas(self):
         cobrancas_vencidas = self.billing_system.filter_past_due_bills()
         list_cobrancas = []
+        list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda")
 
         comprimento = 0
 
@@ -369,7 +383,7 @@ class MainWindow(QMainWindow):
         for item in cobrancas_vencidas:
             cobranca = item.split('£')
             data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
-            list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+            list_cobrancas.append(f"- {{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
 
         clipboard = QApplication.clipboard()
         clipboard.setText("\n".join(list_cobrancas))
@@ -377,6 +391,7 @@ class MainWindow(QMainWindow):
     def copy_cobrancas(self):
         cobrancas = self.billing_system.buscar_cobrancas()
         list_cobrancas = []
+        list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda")
 
         comprimento = 0
 
@@ -388,7 +403,7 @@ class MainWindow(QMainWindow):
         for item in cobrancas:
             cobranca = item.split('£')
             data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
-            list_cobrancas.append(f"{{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
+            list_cobrancas.append(f"- {{:>2}} | {{:<{comprimento}}} | {{:>4}} | {{:<10}}".format(cobranca[0], cobranca[1], cobranca[2], data_venda.strftime("%d/%m/%Y")))
 
         clipboard = QApplication.clipboard()
         clipboard.setText("\n".join(list_cobrancas))
@@ -426,9 +441,16 @@ class MainWindow(QMainWindow):
         dock_layout = QFormLayout()
         salvar_button = QPushButton("Salvar")
 
-        dock_layout.addRow("Nome:", self.nome_input)
-        dock_layout.addRow("Endereço:", self.endereco_input)
-        dock_layout.addRow("Telefone:", self.telefone_input)
+        nome = QLabel("Nome:")
+        nome.setStyleSheet('font-size: 20px')
+        endereco = QLabel("Endereço:")
+        endereco.setStyleSheet('font-size: 20px')
+        telefone = QLabel("Telefone:")
+        telefone.setStyleSheet('font-size: 20px')
+
+        dock_layout.addRow(nome, self.nome_input)
+        dock_layout.addRow(endereco, self.endereco_input)
+        dock_layout.addRow(telefone, self.telefone_input)
         dock_layout.addRow(salvar_button)
 
         dock_widget.setLayout(dock_layout)
@@ -460,9 +482,20 @@ class MainWindow(QMainWindow):
                 self.endereco_input.setText(dados_cliente[1])
                 self.telefone_input.setText(dados_cliente[2])
 
-                dock_layout.addRow("Nome:", self.nome_input)
-                dock_layout.addRow("Endereço:", self.endereco_input)
-                dock_layout.addRow("Telefone:", self.telefone_input)
+                self.nome_input.setStyleSheet('font-size: 20px')
+                self.endereco_input.setStyleSheet('font-size: 20px')
+                self.telefone_input.setStyleSheet('font-size: 20px')
+
+                nome = QLabel("Nome:")
+                nome.setStyleSheet('font-size: 20px')
+                endereco = QLabel("Endereço:")
+                endereco.setStyleSheet('font-size: 20px')
+                telefone = QLabel("Telefone:")
+                telefone.setStyleSheet('font-size: 20px')
+
+                dock_layout.addRow(nome, self.nome_input)
+                dock_layout.addRow(endereco, self.endereco_input)
+                dock_layout.addRow(telefone, self.telefone_input)
                 dock_layout.addRow(salvar_button)
 
                 dock_widget.setLayout(dock_layout)
@@ -488,9 +521,17 @@ class MainWindow(QMainWindow):
         self.cliente_id_input.textChanged.connect(self.on_text_changed)
         salvar_button = QPushButton("Salvar")
 
-        dock_layout.addRow("Cliente:", self.cliente_id_input)
-        dock_layout.addRow("Valor Total:", self.valor_input)
-        dock_layout.addRow("Data da Venda:", self.data_venda_input)
+        cliente = QLabel("Cliente:")
+        cliente.setStyleSheet('font-size: 20px')
+        valor_total = QLabel("Valor Total:")
+        valor_total.setStyleSheet('font-size: 20px')
+        data_venda = QLabel("Data da Venda:")
+        data_venda.setStyleSheet('font-size: 20px')
+
+
+        dock_layout.addRow(cliente, self.cliente_id_input)
+        dock_layout.addRow(valor_total, self.valor_input)
+        dock_layout.addRow(data_venda, self.data_venda_input)
         dock_layout.addRow(salvar_button)
 
         self.suggestions_list = QListWidget(self)
@@ -523,7 +564,10 @@ class MainWindow(QMainWindow):
         filtrar_button = QPushButton("Filtrar Cobranças")
         copiar_button = QPushButton("Copiar Cobranças")
 
-        dock_layout.addRow("Cliente", self.cliente_id_input)
+        cliente = QLabel("Cliente:")
+        cliente.setStyleSheet('font-size: 20px')
+
+        dock_layout.addRow(cliente, self.cliente_id_input)
         dock_layout.addRow(filtrar_button)
         dock_layout.addRow(copiar_button)
 
@@ -552,8 +596,13 @@ class MainWindow(QMainWindow):
         filtrar_button = QPushButton("Filtrar Cobranças")
         copiar_button = QPushButton("Copiar Cobranças")
 
-        dock_layout.addRow("Dia", self.day_date)
-        dock_layout.addRow("Mês", self.month_date)
+        dia = QLabel("Dia:")
+        dia.setStyleSheet('font-size: 20px')
+        mes = QLabel("Mês:")
+        mes.setStyleSheet('font-size: 20px')
+
+        dock_layout.addRow(dia, self.day_date)
+        dock_layout.addRow(mes, self.month_date)
         dock_layout.addRow(filtrar_button)
         dock_layout.addRow(copiar_button)
 
@@ -636,6 +685,7 @@ class MainWindow(QMainWindow):
         if (cliente_id != None):
             cobrancas = self.billing_system.filtrar_cobrancas_por_cliente(int(cliente_id.split('-')[0].strip()))
             list_cobrancas = []
+            list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda")
 
             comprimento = 0
 
@@ -670,6 +720,7 @@ class MainWindow(QMainWindow):
         if (mes != "" or dia != ""):
             cobrancas = self.billing_system.get_cobrancas_by_date(self.month_to_number.get(mes) if mes != "" else "", int(dia) if dia != "" else "")
             list_cobrancas = []
+            list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda")
 
             comprimento = 0
 
