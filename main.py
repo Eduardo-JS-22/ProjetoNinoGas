@@ -231,9 +231,10 @@ class BillingSystem:
         return cobrancas
     
     def delete_cobrancas(self):
+        data = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
         self.cursor.execute('''
-            DELETE FROM cobrancas WHERE id = 23
-        ''')
+            DELETE FROM cobrancas WHERE cobrancas.ativo = 0 AND cobrancas.data_fechamento <= ?
+        ''', (data,))
 
     def close(self):
         self.conn.close()
