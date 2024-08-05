@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         self.billing_system = BillingSystem()
-        self.billing_system.delete_cobrancas()
+        #self.billing_system.delete_cobrancas()
         self.bills = []
         self.clients = None
         self.nome_input = QLineEdit()
