@@ -605,7 +605,7 @@ class MainWindow(QMainWindow):
         copiar_button.clicked.connect(self.copy_bill_filter_name)
 
     def dock_filter_closed_bill_date(self):
-        dock = QDockWidget("Filtrar Por Nome", self)
+        dock = QDockWidget("Filtrar Por Data", self)
         dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
 
         dock_widget = QWidget()
