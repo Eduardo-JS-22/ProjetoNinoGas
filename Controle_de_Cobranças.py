@@ -1,6 +1,6 @@
 import sys, sqlite3
 from PyQt5.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QFormLayout, QApplication, QMainWindow, QToolBar, QDockWidget, QLabel, QStackedWidget, QWidget, QVBoxLayout, QListWidget, QPushButton, QHBoxLayout, QSizePolicy
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QIcon
 from datetime import datetime, timedelta
 
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         # Configurações da janela principal
         self.setWindowTitle("Controle de Cobranças")
         self.setWindowIcon(QIcon('logo.png'))
-        self.setGeometry(100, 100, 1280, 720)
+        self.setGeometry(100, 100, 1366, 768)
 
         # Paleta de cores para o menu superior
         self.setStyleSheet("""
@@ -100,6 +100,9 @@ class MainWindow(QMainWindow):
             }
             QTableWidget {
                 font-size: 24px;
+            }
+            QDockWidget {
+                width: 200px;
             }
         """)
 
@@ -216,7 +219,7 @@ class MainWindow(QMainWindow):
                 create_bill_button = QPushButton("Criar Nova Cobrança", self)
                 create_bill_button.clicked.connect(self.dock_new_bill)
                 self.button_layout.addWidget(create_bill_button)
-                close_bill_button = QPushButton("Fechar Cobranças Selecionadas", self)
+                close_bill_button = QPushButton("Fechar Cobranças", self)
                 close_bill_button.clicked.connect(self.close_cobrancas_selecionadas)
                 self.button_layout.addWidget(close_bill_button)
 
@@ -528,8 +531,6 @@ class MainWindow(QMainWindow):
     
     def dock_new_bill(self):
         dock = QDockWidget("Nova Cobrança", self)
-        dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
-
         # Criar o conteúdo do dock
         dock_widget = QWidget()
         dock_layout = QFormLayout()
@@ -537,11 +538,11 @@ class MainWindow(QMainWindow):
         salvar_button = QPushButton("Salvar")
 
         cliente = QLabel("Cliente:")
-        cliente.setStyleSheet('font-size: 24px')
+        cliente.setStyleSheet('font-size: 20px')
         valor_total = QLabel("Valor Total:")
-        valor_total.setStyleSheet('font-size: 24px')
+        valor_total.setStyleSheet('font-size: 20px')
         data_venda = QLabel("Data da Venda:")
-        data_venda.setStyleSheet('font-size: 24px')
+        data_venda.setStyleSheet('font-size: 20px')
 
 
         dock_layout.addRow(cliente, self.cliente_id_input)
