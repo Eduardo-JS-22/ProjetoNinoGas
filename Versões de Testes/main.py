@@ -236,6 +236,15 @@ class BillingSystem:
             DELETE FROM cobrancas WHERE cobrancas.ativo = 0 AND cobrancas.data_fechamento <= ?
         ''', (data,))
 
+    def update_custom_bill(self):
+        self.cursor.execute('''
+            UPDATE cobrancas
+            SET cliente_id = 18, valor_total = 125, data_venda = ?, data_vencimento = ?
+            WHERE id = 66
+        ''', ('2024-08-19', '2024-09-18'))
+        self.conn.commit()
+
+
     def close(self):
         self.conn.close()
 
@@ -254,4 +263,5 @@ billing_system = BillingSystem()
 #print(billing_system.filtrar_cobrancas_por_cliente(2))
 #print(billing_system.get_cobrancas_by_date("", 3))
 #print(len(billing_system.filter_past_due_bills()))
+billing_system.update_custom_bill()
 billing_system.close()
