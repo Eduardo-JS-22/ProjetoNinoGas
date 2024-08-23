@@ -1,68 +1,39 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QPushButton, QLabel, QCompleter
+import sqlite3
 
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
+# Conectar ao banco de dados
+conn = sqlite3.connect('banco_de_dados_nino_gas.db')
+cursor = conn.cursor()
 
-        self.initUI()
+clientes = []
+cursor.execute('SELECT clientes.id FROM clientes')
+for row in cursor.fetchall():
+    cursor.execute('''
+        SELECT 
+            cliente_id,
+            SUM(valor_total) AS soma_valor_total, 
+            MIN(data_venda) AS data_venda_mais_antiga, 
+            MIN(data_vencimento) AS data_vencimento_mais_antiga
+        FROM 
+            cobrancas
+        WHERE
+            cliente_id = ? AND ativo = 1
+        GROUP BY 
+            cliente_id;
+    ''', (row[0],))
+    result = cursor.fetchone()
+    if (result != None):
+        cursor.execute('''
+            UPDATE clientes
+            SET valor_total = ?, data_venda = ?, data_vencimento = ?
+            WHERE id = ?
+        ''', (result[1], result[2], result[3], row[0]))
+    else:
+        cursor.execute('''
+            UPDATE clientes
+            SET valor_total = NULL, data_venda = NULL, data_vencimento = NULL
+            WHERE id = ?
+        ''', (row[0],))
 
-    def initUI(self):
-        # Exemplo de lista de nomes no formato "número - nome"
-        self.clientes = [
-            "1 - Ana",
-            "2 - João",
-            "3 - Pedro",
-            "4 - Maria",
-            "5 - Lucas",
-            "6 - Aline",
-            "7 - Paula",
-            "8 - Rafael",
-            "9 - Beatriz",
-            "10 - André"
-        ]
-
-        # Apenas os nomes, sem os números
-        self.nomes = [cliente.split(" - ")[1] for cliente in self.clientes]
-
-        self.layout = QVBoxLayout()
-
-        # Input de cliente
-        self.cliente_id_input = QLineEdit(self)
-        self.cliente_id_input.setPlaceholderText("Digite o nome do cliente")
-
-        # Configurando o QCompleter
-        self.completer = QCompleter(self.nomes, self)
-        self.completer.setCaseSensitivity(False)  # Ignora maiúsculas/minúsculas
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)  # Mostra uma lista suspensa
-        self.cliente_id_input.setCompleter(self.completer)
-
-        self.layout.addWidget(self.cliente_id_input)
-
-        # Botão de imprimir
-        self.imprimir_button = QPushButton("Imprimir", self)
-        self.imprimir_button.clicked.connect(self.imprimir_cliente)
-
-        self.layout.addWidget(self.imprimir_button)
-
-        # Label para exibir o resultado
-        self.result_label = QLabel(self)
-        self.layout.addWidget(self.result_label)
-
-        self.setLayout(self.layout)
-        self.setWindowTitle("Seleção de Clientes")
-
-    def imprimir_cliente(self):
-        nome_selecionado = self.cliente_id_input.text()
-        
-        # Encontrando o nome completo (número - nome) na lista original
-        for cliente in self.clientes:
-            if nome_selecionado in cliente:
-                self.result_label.setText(cliente)
-                break
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    mainWin = MainWindow()
-    mainWin.show()
-    sys.exit(app.exec_())
+# Commit e fechar a conexão
+conn.commit()
+conn.close()
