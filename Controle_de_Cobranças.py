@@ -267,19 +267,41 @@ class MainWindow(QMainWindow):
             self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
     
     def load_data_closed_bills_filter_date(self, dia, mes):
-        self.table_closed_bills.setColumnCount(5)
-        self.table_closed_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_fechadas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_fechadas())
-        self.table_closed_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Pagamento"])
-
         cobrancas = self.billing_system.filtrar_cobrancas_por_data(self.month_to_number.get(mes) if mes != "" else "", int(dia) if dia != "" else "")
-        for i in range(len(cobrancas)):
-            data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
-            data_pagamento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
-            self.table_closed_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
-            self.table_closed_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
-            self.table_closed_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
-            self.table_closed_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
-            self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
+        if (len(cobrancas) > 0):
+            self.table_closed_bills.clear()
+            self.table_closed_bills.setColumnCount(5)
+            self.table_closed_bills.setRowCount(30 if self.billing_system.filtrar_quantidade_cobrancas_fechadas() < 30 else self.billing_system.filtrar_quantidade_cobrancas_fechadas())
+            self.table_closed_bills.setHorizontalHeaderLabels(["Venda", "Cliente", "Valor Total", "Data de Venda", "Data de Pagamento"])
+
+            for i in range(len(cobrancas)):
+                data_venda = datetime.strptime(str(cobrancas[i].split('£')[3].strip()), "%Y-%m-%d")
+                data_pagamento = datetime.strptime(str(cobrancas[i].split('£')[4].strip()), "%Y-%m-%d")
+                self.table_closed_bills.setItem(i, 0, QTableWidgetItem(str(cobrancas[i].split('£')[0].strip())))
+                self.table_closed_bills.setItem(i, 1, QTableWidgetItem(str(cobrancas[i].split('£')[1].strip())))
+                self.table_closed_bills.setItem(i, 2, QTableWidgetItem(str(cobrancas[i].split('£')[2].strip())))
+                self.table_closed_bills.setItem(i, 3, QTableWidgetItem(data_venda.strftime("%d/%m/%Y")))
+                self.table_closed_bills.setItem(i, 4, QTableWidgetItem(data_pagamento.strftime("%d/%m/%Y")))
+        else:
+            QMessageBox.warning(self, "Erro", "Nenhuma cobrança encontrada para a data selecionada.")
+    
+    def load_data_client_pay_bills_filter_date(self, dia, mes):
+        clientes = self.billing_system.get_to_load_clients_pay_by_date(mes, dia)
+        if (len(clientes) > 0):
+            self.table_clients.clear()
+            self.table_clients.setColumnCount(6)
+            self.table_clients.setRowCount(30 if self.billing_system.filtrar_quantidade_clientes_ativos() < 30 else self.billing_system.filtrar_quantidade_clientes_ativos())
+            self.table_clients.setHorizontalHeaderLabels(["Nome", "Endereço", "Telefone", "Valor Devido", "Data da Venda", "Data de Vencimento"])
+
+            for i in range(len(clientes)):
+                self.table_clients.setItem(i, 0, QTableWidgetItem(str(clientes[i].split('£')[0].strip())))
+                self.table_clients.setItem(i, 1, QTableWidgetItem(str(clientes[i].split('£')[1].strip()))) if (clientes[i].split('£')[1].strip() != "None") else self.table_clients.setItem(i, 1, QTableWidgetItem(""))
+                self.table_clients.setItem(i, 2, QTableWidgetItem(str(clientes[i].split('£')[2].strip()))) if (clientes[i].split('£')[2].strip() != "None") else self.table_clients.setItem(i, 2, QTableWidgetItem(""))
+                self.table_clients.setItem(i, 3, QTableWidgetItem(str(clientes[i].split('£')[3].strip()))) if (clientes[i].split('£')[3].strip() != "None") else self.table_clients.setItem(i, 3, QTableWidgetItem(""))
+                self.table_clients.setItem(i, 4, QTableWidgetItem(str(clientes[i].split('£')[4].strip()))) if (clientes[i].split('£')[4].strip() != "None") else self.table_clients.setItem(i, 4, QTableWidgetItem(""))
+                self.table_clients.setItem(i, 5, QTableWidgetItem(str(clientes[i].split('£')[5].strip()))) if (clientes[i].split('£')[5].strip() != "None") else self.table_clients.setItem(i, 5, QTableWidgetItem(""))
+        else:
+            QMessageBox.warning(self, "Erro", "Nenhum cliente com dívida para a data selecionada.")
     
     def client_cell_was_clicked(self, row):
         self.clients = f"{self.table_clients.item(row, 0).text()} £ {self.table_clients.item(row, 1).text()}"
@@ -416,14 +438,14 @@ class MainWindow(QMainWindow):
     
     def dock_pay_bill(self):
         if (self.clients != None):
-            self.dock = QDockWidget("Quitar Dívida", self)
+            self.dock = QDockWidget("Pagar Dívida", self)
             self.dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
             dados_cliente = self.billing_system.return_client(self.clients.split('£')[0].strip(), self.clients.split('£')[1].strip())
 
             if (dados_cliente != None):
                 dock_widget = QWidget()
                 dock_layout = QFormLayout()
-                pagar_button = QPushButton("Quitar")
+                pagar_button = QPushButton("Pagar")
 
                 cliente = QLabel("Cliente:")
                 cliente.setStyleSheet('font-size: 20px')
@@ -467,7 +489,9 @@ class MainWindow(QMainWindow):
 
         dock_widget = QWidget()
         dock_layout = QFormLayout()
+        filtrar_button = QPushButton("Filtrar Relatório")
         copiar_button = QPushButton("Copiar Relatório")
+        atualizar_button = QPushButton("Atualizar Página")
 
         dia = QLabel("Dia:")
         dia.setStyleSheet('font-size: 24px')
@@ -476,7 +500,9 @@ class MainWindow(QMainWindow):
 
         dock_layout.addRow(dia, self.day_date)
         dock_layout.addRow(mes, self.month_date)
+        dock_layout.addRow(filtrar_button)
         dock_layout.addRow(copiar_button)
+        dock_layout.addRow(atualizar_button)
 
         dock_widget.setLayout(dock_layout)
         self.dock.setWidget(dock_widget)
@@ -485,7 +511,9 @@ class MainWindow(QMainWindow):
 
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
 
+        filtrar_button.clicked.connect(self.filter_client_pay_bills)
         copiar_button.clicked.connect(self.copy_client_pay_bills)
+        atualizar_button.clicked.connect(self.update_data)
 
     def dock_filter_closed_bill_name(self):
         self.dock = QDockWidget("Filtrar Por Nome", self)
@@ -498,6 +526,7 @@ class MainWindow(QMainWindow):
         dock_layout = QFormLayout()
         filtrar_button = QPushButton("Filtrar Cobranças")
         copiar_button = QPushButton("Copiar Cobranças")
+        atualizar_button = QPushButton("Atualizar Página")
 
         cliente = QLabel("Cliente:")
         cliente.setStyleSheet('font-size: 24px')
@@ -505,6 +534,7 @@ class MainWindow(QMainWindow):
         dock_layout.addRow(cliente, self.filter_bill_name)
         dock_layout.addRow(filtrar_button)
         dock_layout.addRow(copiar_button)
+        dock_layout.addRow(atualizar_button)
 
         self.completer = QCompleter(lista_nomes, self)
         self.completer.setCaseSensitivity(False)
@@ -522,6 +552,7 @@ class MainWindow(QMainWindow):
 
         filtrar_button.clicked.connect(self.filter_closed_bill_name)
         copiar_button.clicked.connect(self.copy_bill_filter_name)
+        atualizar_button.clicked.connect(self.update_data)
 
     def dock_filter_closed_bill_date(self):
         self.dock = QDockWidget("Filtrar Por Data", self)
@@ -531,6 +562,7 @@ class MainWindow(QMainWindow):
         dock_layout = QFormLayout()
         filtrar_button = QPushButton("Filtrar Cobranças")
         copiar_button = QPushButton("Copiar Cobranças")
+        atualizar_button = QPushButton("Atualizar Página")
 
         dia = QLabel("Dia:")
         dia.setStyleSheet('font-size: 24px')
@@ -541,6 +573,7 @@ class MainWindow(QMainWindow):
         dock_layout.addRow(mes, self.month_date)
         dock_layout.addRow(filtrar_button)
         dock_layout.addRow(copiar_button)
+        dock_layout.addRow(atualizar_button)
 
         dock_widget.setLayout(dock_layout)
         self.dock.setWidget(dock_widget)
@@ -551,6 +584,7 @@ class MainWindow(QMainWindow):
 
         filtrar_button.clicked.connect(self.filter_closed_bill_date)
         copiar_button.clicked.connect(self.copy_bill_filter_date)
+        atualizar_button.clicked.connect(self.update_data)
     
     def on_dock_visibility_changed(self, visible):
         if not visible:
@@ -581,7 +615,7 @@ class MainWindow(QMainWindow):
         antigo_nome = self.old_edit_client_name
         antigo_endereco = self.old_edit_client_endereco
 
-        if (antigo_nome != "" and antigo_endereco != ""):
+        if (antigo_nome != ""):
             cliente_id = self.billing_system.return_client_id(antigo_nome, antigo_endereco)
         else:
             QMessageBox.information(self, "Erro", "Dados do cliente não localizado.")
@@ -634,6 +668,7 @@ class MainWindow(QMainWindow):
     def filter_closed_bill_name(self):
         nome_selecionado = self.filter_bill_name.text()
         lista_clientes = self.billing_system.list_clients_names()
+        cliente_id = ""
         for cliente in lista_clientes:
             if nome_selecionado in cliente:
                 cliente_id = cliente
@@ -643,11 +678,12 @@ class MainWindow(QMainWindow):
             self.table_closed_bills.clear()
             self.load_data_closed_bills_filter_name(int(cliente_id.split('£')[0].strip()))
         else:
-            QMessageBox.warning(self, "Erro", "Selecione um cliente para filtrar as cobranças.")
+            QMessageBox.warning(self, "Erro", f"Nenhum cobrança localizada do cliente: {nome_selecionado}.")
     
     def copy_bill_filter_name(self):
         nome_selecionado = self.filter_bill_name.text()
         lista_clientes = self.billing_system.list_clients_names()
+        cliente_id = ""
         for cliente in lista_clientes:
             if nome_selecionado in cliente:
                 cliente_id = cliente
@@ -667,14 +703,13 @@ class MainWindow(QMainWindow):
             clipboard.setText("\n".join(list_cobrancas))
             QMessageBox.information(self, "Info", "Cobranças copiadas para área de transferência.")
         else:
-            QMessageBox.warning(self, "Erro", "Erro ao copiar cobrança por cliente.")
+            QMessageBox.warning(self, "Erro", f"Cliente não localizado com o nome: {nome_selecionado}")
 
     def filter_closed_bill_date(self):
         mes = self.month_date.currentText()
         dia = self.day_date.currentText()
 
         if (mes != "" or dia != ""):
-            self.table_closed_bills.clear()
             self.load_data_closed_bills_filter_date(dia, mes)
         else:
             QMessageBox.warning(self, "Erro", "Selecione um dia e/ou um mês para filtrar as cobranças.")
@@ -685,19 +720,31 @@ class MainWindow(QMainWindow):
 
         if (mes != "" or dia != ""):
             cobrancas = self.billing_system.filtrar_cobrancas_por_data(self.month_to_number.get(mes) if mes != "" else "", int(dia) if dia != "" else "")
-            list_cobrancas = []
-            list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda | Data do Pagamento")
+            if (len(cobrancas) > 0):
+                list_cobrancas = []
+                list_cobrancas.append("- Venda | Cliente | Valor | Data da Venda | Data do Pagamento")
 
-            for item in cobrancas:
-                cobranca = item.split('£')
-                data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
-                data_pagamento = datetime.strptime(str(cobranca[4].strip()), "%Y-%m-%d")
-                list_cobrancas.append(f"- {cobranca[0]} | {cobranca[1]} | {cobranca[2]} | {data_venda.strftime("%d/%m/%Y")} | {data_pagamento.strftime("%d/%m/%Y")}")
-            clipboard = QApplication.clipboard()
-            clipboard.setText("\n".join(list_cobrancas))
-            QMessageBox.information(self, "Info", "Cobranças copiadas para área de transferência.")
+                for item in cobrancas:
+                    cobranca = item.split('£')
+                    data_venda = datetime.strptime(str(cobranca[3].strip()), "%Y-%m-%d")
+                    data_pagamento = datetime.strptime(str(cobranca[4].strip()), "%Y-%m-%d")
+                    list_cobrancas.append(f"- {cobranca[0]} | {cobranca[1]} | {cobranca[2]} | {data_venda.strftime("%d/%m/%Y")} | {data_pagamento.strftime("%d/%m/%Y")}")
+                clipboard = QApplication.clipboard()
+                clipboard.setText("\n".join(list_cobrancas))
+                QMessageBox.information(self, "Info", "Cobranças copiadas para área de transferência.")
+            else:
+                QMessageBox.warning(self, "Erro", "Nenhuma cobrança localizada com base na data inserida.")
         else:
             QMessageBox.warning(self, "Erro", "Selecione um dia e/ou um mês para filtrar as cobranças.")
+    
+    def filter_client_pay_bills(self):
+        mes = self.month_date.currentText()
+        dia = self.day_date.currentText()
+
+        if (mes != "" or dia != ""):
+            self.load_data_client_pay_bills_filter_date(dia, mes)
+        else:
+            QMessageBox.warning(self, "Erro", "Selecione um dia e/ou um mês para filtrar os clientes.")
 
     def copy_client_pay_bills(self):
         mes = self.month_date.currentText()
@@ -981,6 +1028,8 @@ class BillingSystem:
                 
                 # Subtrai o valor pago do total
                 valor_pago -= valor_total
+            elif valor_pago == 0:
+                break
             else:
                 # Se o pagamento não cobrir o valor total, ajusta o valor da cobrança
                 new_valor_total = valor_total - valor_pago
@@ -1025,6 +1074,32 @@ class BillingSystem:
 
         for row in self.cursor.fetchall():
             clientes.append(f"{row[0]} £ {row[1]} £ {row[2]}")
+        
+        return clientes
+    
+    def get_to_load_clients_pay_by_date(self, month=None, day=None):
+        query = '''
+            SELECT clientes.nome, clientes.endereco, clientes.telefone, clientes.valor_total, clientes.data_venda, clientes.data_vencimento
+            FROM clientes
+            WHERE clientes.valor_total IS NOT NULL
+        '''
+        params = []
+
+        if month and day:
+            query += ' AND strftime("%m", clientes.data_vencimento) = ? AND strftime("%d", clientes.data_vencimento) = ?'
+            params.extend([f'{month:02}', f'{day:02}'])
+        elif month:
+            query += ' AND strftime("%m", clientes.data_vencimento) = ?'
+            params.append(f'{month:02}')
+        elif day:
+            query += ' AND strftime("%d", clientes.data_vencimento) = ?'
+            params.append(f'{day:02}')
+        
+        self.cursor.execute(query, params)
+        clientes = []
+
+        for row in self.cursor.fetchall():
+            clientes.append(f"{row[0]} £ {row[1]} £ {row[2]} £ {row[3]} £ {row[4]} £ {row[5]}")
         
         return clientes
 
