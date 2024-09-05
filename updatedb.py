@@ -1,19 +1,27 @@
 import sqlite3
 
-def clear_table_and_reset_autoincrement(table_name):
+def update_client_names():
+    # Conecte-se ao banco de dados
     conn = sqlite3.connect('banco_de_dados_nino_gas.db')
     cursor = conn.cursor()
 
-    # Excluir todos os dados da tabela
-    cursor.execute(f"DELETE FROM {table_name}")
+    # Selecione todos os clientes com id e nome
+    cursor.execute('SELECT id, nome FROM clientes')
+    clientes = cursor.fetchall()
 
-    # Zerar a sequência de autoincremento
-    cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{table_name}'")
+    # Itere sobre os clientes e atualize o nome
+    for cliente in clientes:
+        id, nome = cliente
+        novo_nome = f"{nome} - {id}"
+        cursor.execute('''
+            UPDATE clientes
+            SET nome = ?
+            WHERE id = ?
+        ''', (novo_nome, id))
 
-    # Salvar as mudanças e fechar a conexão
+    # Confirme as alterações
     conn.commit()
     conn.close()
 
-# Exemplo de uso da função
-clear_table_and_reset_autoincrement('clientes')
-clear_table_and_reset_autoincrement('cobrancas')
+# Chame a função para atualizar os nomes dos clientes
+update_client_names()
